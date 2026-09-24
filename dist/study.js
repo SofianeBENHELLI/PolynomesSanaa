@@ -32,6 +32,15 @@ if(typeof module!=='undefined')module.exports=Study;
 function renderStudy(){
   if(!document.getElementById('variation-table'))return;
   const {a,b,c}=state,m=Study.analyze(a,b,c),f=fmt;
+  const bracket=r=>`(x ${r<0?'+':'−'} ${f(Math.abs(r))})`;
+  const canonical=a===0?'':`${f(a)}${bracket(m.h)}² ${m.k<0?'−':'+'} ${f(Math.abs(m.k))}`;
+  $('variation-method').innerHTML=a===0?'<strong>Cas particulier : a = 0</strong><p>La fonction est affine ou constante : le signe de b donne les variations. Il n’y a pas de sommet.</p>':`<span class="course-tag">FORME CANONIQUE → VARIATIONS</span><p class="bridge-formula">f(x) = ${canonical}</p><div class="bridge-steps"><p><b>1 · h = ${f(m.h)}</b><br>On place le changement de variation en x = ${f(m.h)}.</p><p><b>2 · a = ${f(a)} ${a>0?'&gt;':'&lt;'} 0</b><br>${a>0?'↘ Décroît, puis ↗ croît.':'↗ Croît, puis ↘ décroît.'}</p><p><b>3 · k = ${f(m.k)}</b><br>C’est le ${a>0?'minimum':'maximum'} : S(${f(m.h)} ; ${f(m.k)}).</p></div><p>Le carré (x − h)² diminue jusqu’à h, puis augmente. ${a>0?'Multiplier par a > 0 conserve':'Multiplier par a < 0 inverse'} ce sens ; ajouter k ne le change pas.</p>`;
+  let signExplanation;
+  if(a===0) signExplanation=b===0?`f est constante : son signe est celui de c = ${f(c)}.`:`f(x) = ${f(b)}${bracket(m.roots[0])}. Le facteur x − (${f(m.roots[0])}) change de signe à sa racine ; on multiplie par le signe de b.`;
+  else if(m.roots.length===2) signExplanation=`<span class="course-tag">FORME FACTORISÉE → SIGNES</span><p class="bridge-formula">f(x) = ${f(a)}${bracket(m.roots[0])}${bracket(m.roots[1])}</p><p>Les racines ordonnées sont x₁ = ${f(m.roots[0])} et x₂ = ${f(m.roots[1])}. Chaque facteur change de signe à sa racine. <b>Multipliez les trois lignes a, x − x₁ et x − x₂</b> pour obtenir la ligne f(x).</p><p>À l’extérieur des racines, le produit des deux facteurs est positif : f a le signe de a (${a>0?'+':'−'}). Entre les racines, ce produit est négatif : f a le signe opposé (${a>0?'−':'+'}).</p>`;
+  else if(m.roots.length===1) signExplanation=`<span class="course-tag">UN FACTEUR AU CARRÉ → PAS DE CHANGEMENT DE SIGNE</span><p class="bridge-formula">f(x) = ${f(a)}${bracket(m.roots[0])}²</p><p>Le carré est positif de chaque côté de x₀ = ${f(m.roots[0])}, et nul en x₀. Donc f est ${a>0?'positive':'négative'} sauf à la racine double, où f = 0. Multipliez le signe de a par celui du carré dans le tableau.</p>`;
+  else signExplanation=`<span class="course-tag">SANS RACINE → UTILISER LE SOMMET</span><p class="bridge-formula">f(x) = ${canonical}</p><p>Pas de forme factorisée sur ℝ. La forme canonique donne un ${a>0?'minimum':'maximum'} k = ${f(m.k)}, strictement ${a>0?'positif':'négatif'}. Ainsi f(x) ${a>0?'≥':'≤'} ${f(m.k)} ${a>0?'&gt;':'&lt;'} 0 : f garde le signe de a sur ℝ.</p>`;
+  $('sign-method').innerHTML=signExplanation;
   const signCell=s=>`<td class="${s>0?'positive':s<0?'negative':'zero'}">${s>0?'+':s<0?'−':'0'}</td>`;
   const table=(caption,rows)=>`<table class="study-table"><caption>${caption}</caption><tbody>${rows}</tbody></table>`;
   const arrow=up=>`<td><span class="variation-arrow">${up?'↗':'↘'}<small>${up?'croissante':'décroissante'}</small></span></td>`;
@@ -40,7 +49,20 @@ function renderStudy(){
   else{$('variation-table').innerHTML=table('Cas a = 0 : fonction affine ou constante',`<tr><th scope="row">x</th><td>−∞</td><td></td><td>+∞</td></tr><tr><th scope="row">f′(x)</th><td></td>${signCell(Math.sign(b))}<td></td></tr><tr><th scope="row">f(x)</th><td>${b===0?f(c):b>0?'−∞':'+∞'}</td>${b===0?'<td>→ constante</td>':arrow(b>0)}<td>${b===0?f(c):b>0?'+∞':'−∞'}</td></tr>`);$('variation-reading').textContent=b===0?`f est constante et vaut ${f(c)} sur ℝ.`:`f est ${b>0?'croissante':'décroissante'} sur ℝ. Il n’y a pas de sommet.`;}
   let head='<tr><th scope="row">x</th><td>−∞</td>',row='<tr><th scope="row">f(x)</th><td></td>';
   m.signs.forEach((s,i)=>{head+='<td></td>';row+=signCell(s);if(i<m.roots.length){head+=`<td>${f(m.roots[i])}</td>`;row+='<td class="zero">0</td>';}});head+='<td>+∞</td></tr>';row+='<td></td></tr>';
-  $('sign-table').innerHTML=table('Signe de f sur ℝ — racines rangées dans l’ordre croissant',head+row);
+  let factorRows='';
+  if(a!==0&&m.roots.length){
+    const factorRow=(label,intervalSigns,atRoots)=>{
+      let cells=`<tr><th scope="row">${label}</th><td></td>`;
+      intervalSigns.forEach((sign,i)=>{cells+=signCell(sign);if(i<m.roots.length)cells+=signCell(atRoots[i]);});
+      return cells+'<td></td></tr>';
+    };
+    factorRows+=factorRow(`a = ${f(a)}`,m.signs.map(()=>Math.sign(a)),m.roots.map(()=>Math.sign(a)));
+    if(m.roots.length===2){
+      factorRows+=factorRow('x − x₁',[-1,1,1],[0,1]);
+      factorRows+=factorRow('x − x₂',[-1,-1,1],[-1,0]);
+    }else factorRows+=factorRow('(x − x₀)²',[1,1],[0]);
+  }
+  $('sign-table').innerHTML=table(factorRows?'Multiplier les signes des facteurs pour obtenir f(x)':'Signe de f sur ℝ',head+factorRows+row);
   $('sign-case').textContent=a===0?'Cas a = 0 : le tableau reste valable pour la fonction affine ou constante.':`Δ = ${f(m.delta)} : ${m.roots.length===2?'deux racines réelles distinctes':m.roots.length===1?'une racine double, sans changement de signe':'aucune racine réelle'}.`;
   const op=$('inequality').value,parts=Study.solutions(m,op),num=n=>n===Infinity?'+∞':n===-Infinity?'−∞':f(n);
   const interval=p=>p.lo===-Infinity&&p.hi===Infinity?'ℝ':p.lo===p.hi?`{${num(p.lo)}}`:`${p.lc?'[':']'}${num(p.lo)} ; ${num(p.hi)}${p.hc?']':'['}`;
